@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+.next/
+out/
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# GCP
+*.json
+!package.json
+!tsconfig.json
+!components.json
+service-account-key.json
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/
