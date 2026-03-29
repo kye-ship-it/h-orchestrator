@@ -284,8 +284,32 @@ function cleanMarkdown(raw: string): string {
     content = fenceMatch[1].trim();
   }
 
-  // Ensure blank line between headings and tables (markdown requires it)
-  content = content.replace(/(^#{1,6}\s+.+)(\n)((?:\|.+\|))/gm, '$1\n\n$3');
+  // Fix markdown tables and headings line by line
+  const lines = content.split('\n');
+  const fixed: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Fix table separator row: match column count to header row
+    if (/^\|[\s-:]+\|/.test(line) && i > 0 && lines[i - 1].startsWith('|')) {
+      const headerCols = lines[i - 1].split('|').filter(c => c.trim() !== '').length;
+      const sepCols = line.split('|').filter(c => c.trim() !== '').length;
+      if (sepCols !== headerCols) {
+        const sep = '|' + Array(headerCols).fill('---|').join('') ;
+        fixed.push(sep);
+      } else {
+        fixed.push(line);
+      }
+    } else {
+      fixed.push(line);
+    }
+
+    // Insert blank line after headings if next line is not blank
+    if (/^#{1,6}\s+/.test(line) && i + 1 < lines.length && lines[i + 1].trim() !== '') {
+      fixed.push('');
+    }
+  }
+  content = fixed.join('\n');
 
   // Ensure frontmatter starts with ---
   if (/^[a-z_]+\s*:/.test(content) && !content.startsWith('---')) {

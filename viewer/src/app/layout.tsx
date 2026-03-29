@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HMCA Monitor",
+  title: "H-Orchestrator",
   description: "H-Orchestrator Agent Monitoring System",
 };
 
