@@ -1,29 +1,33 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 const REPORT_TYPES = [
-  { value: "trend", label: "Trend Analysis" },
-  { value: "comparison", label: "Comparison" },
-  { value: "executive", label: "Executive Summary" },
+  { value: "weekly", label: "주간 리포트" },
+  { value: "monthly", label: "월간 리포트" },
+  { value: "custom", label: "커스텀 분석" },
 ];
 
 const METRICS = [
-  { value: "calls", label: "Calls" },
-  { value: "bant", label: "BANT" },
-  { value: "duration", label: "Duration" },
-  { value: "transfers", label: "Transfers" },
+  { value: "funnel", label: "Call Funnel" },
+  { value: "qualification", label: "Qualification Depth" },
+  { value: "performance", label: "Call Performance" },
+  { value: "model", label: "차종별 분석" },
+  { value: "dealer", label: "딜러별 분석" },
+  { value: "channel", label: "채널별 분석" },
 ];
 
 export default function GenerateReportPage() {
   const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [reportType, setReportType] = useState("trend");
-  const [metrics, setMetrics] = useState<string[]>([]);
+  const [reportType, setReportType] = useState("weekly");
+  const [metrics, setMetrics] = useState<string[]>(["funnel", "qualification", "performance"]);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<string | null>(null);
+  const [savedPath, setSavedPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const toggle = (m: string) =>
@@ -34,6 +38,7 @@ export default function GenerateReportPage() {
     setLoading(true);
     setError(null);
     setReport(null);
+    setSavedPath(null);
 
     try {
       const res = await fetch("/api/report", {
@@ -46,7 +51,8 @@ export default function GenerateReportPage() {
         throw new Error(data.error ?? "Failed to generate report");
       }
       const data = await res.json();
-      setReport(data.content ?? data.report ?? "");
+      setReport(data.content ?? "");
+      setSavedPath(data.path ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -58,26 +64,24 @@ export default function GenerateReportPage() {
 
   return (
     <div>
-      <h1 className="text-[26px] font-bold text-neutral-900 mb-1">Generate Report</h1>
-      <p className="text-sm text-neutral-500 mb-8">Create an on-demand analysis report from call log data</p>
+      <h1 className="text-[26px] font-bold text-neutral-900 mb-1">리포트 생성</h1>
+      <p className="text-sm text-neutral-500 mb-8">H-Voice 콜 데이터 기반 분석 리포트를 생성합니다</p>
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
-        {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">Title</label>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">리포트 제목</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Weekly Performance Report"
+            placeholder="2월 월간 분석 리포트"
             className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-[15px] text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200"
             required
           />
         </div>
 
-        {/* Date Range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">Start Date</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">시작일</label>
             <input
               type="date"
               value={startDate}
@@ -87,7 +91,7 @@ export default function GenerateReportPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">End Date</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">종료일</label>
             <input
               type="date"
               value={endDate}
@@ -98,9 +102,8 @@ export default function GenerateReportPage() {
           </div>
         </div>
 
-        {/* Report Type */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">Report Type</label>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">리포트 유형</label>
           <div className="flex gap-2">
             {REPORT_TYPES.map((t) => (
               <button
@@ -119,9 +122,8 @@ export default function GenerateReportPage() {
           </div>
         </div>
 
-        {/* Metrics */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-2">Metrics to include</label>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">분석 항목</label>
           <div className="flex flex-wrap gap-2">
             {METRICS.map((m) => {
               const checked = metrics.includes(m.value);
@@ -164,10 +166,10 @@ export default function GenerateReportPage() {
           {loading ? (
             <span className="flex items-center gap-2">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Generating...
+              생성 중...
             </span>
           ) : (
-            "Generate Report"
+            "리포트 생성"
           )}
         </button>
       </form>
@@ -175,8 +177,16 @@ export default function GenerateReportPage() {
       {report && (
         <div className="mt-12 border-t border-neutral-200 pt-10">
           <div className="mb-6 flex items-center gap-2">
-            <span className="rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Generated</span>
+            <span className="rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">생성 완료</span>
             <span className="text-sm text-neutral-500">{title}</span>
+            {savedPath && (
+              <Link
+                href={`/logs/${savedPath}`}
+                className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+              >
+                저장된 리포트 보기
+              </Link>
+            )}
           </div>
           <MarkdownRenderer content={report} />
         </div>

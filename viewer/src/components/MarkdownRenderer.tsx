@@ -110,6 +110,7 @@ const components: Partial<Components> = {
     </a>
   ),
   hr: (props) => <hr className="my-8 border-neutral-200" {...props} />,
+  img: () => null,
 };
 
 export default function MarkdownRenderer({ content }: { content: string }) {
