@@ -20,8 +20,8 @@ BQ_ANALYSIS_TABLE = os.getenv(
 )
 
 # GCS paths
-GCS_DAILY_PREFIX = "daily/h-voice"
-GCS_REPORTS_PREFIX = "reports/h-voice"
+GCS_DAILY_PREFIX = os.getenv("GCS_DAILY_PREFIX", "daily/hmb")
+GCS_REPORTS_PREFIX = os.getenv("GCS_REPORTS_PREFIX", "reports/hmb")
 GCS_TEMPLATES_PREFIX = "templates"
 
 # Embedding / Semantic Search (QMD)
