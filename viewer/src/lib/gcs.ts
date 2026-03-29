@@ -256,17 +256,62 @@ export async function listFileTree(prefix?: string): Promise<FileNode[]> {
   if (!bucket) return MOCK_TREE;
 
   try {
+    const HIDDEN_PREFIXES = ['index/', 'templates/'];
     const [files] = await bucket.getFiles({ prefix: prefix ?? '' });
     const tree = buildTreeSimple(
       files
         .map((f) => f.name)
         .filter((name) => !name.endsWith('/'))
+        .filter((name) => !HIDDEN_PREFIXES.some((p) => name.startsWith(p)))
     );
     return tree;
   } catch (error) {
     console.error('GCS listFileTree error:', error);
     return [];
   }
+}
+
+/**
+ * Strip markdown code fences that Gemini sometimes wraps around output,
+ * and ensure frontmatter has opening `---`.
+ */
+function cleanMarkdown(raw: string): string {
+  let content = raw.trim();
+
+  // Remove wrapping code fences: ```markdown ... ``` or ``` ... ```
+  const fenceMatch = content.match(/^```(?:markdown)?\s*\n([\s\S]*?)```\s*$/);
+  if (fenceMatch) {
+    content = fenceMatch[1].trim();
+  }
+
+  // Ensure frontmatter starts with ---
+  if (/^[a-z_]+\s*:/.test(content) && !content.startsWith('---')) {
+    content = '---\n' + content;
+    // Ensure closing --- exists after frontmatter block
+    const lines = content.split('\n');
+    let closingIdx = -1;
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === '---') { closingIdx = i; break; }
+      if (lines[i].startsWith('#') || lines[i].trim() === '') {
+        // Insert --- before the first blank line or heading after frontmatter
+        lines.splice(i, 0, '---');
+        closingIdx = i;
+        break;
+      }
+    }
+    if (closingIdx === -1) {
+      // No closing found, try to find where frontmatter ends
+      for (let i = 1; i < lines.length; i++) {
+        if (!/^[a-z_]+\s*:/.test(lines[i]) && lines[i].trim() !== '') {
+          lines.splice(i, 0, '---');
+          break;
+        }
+      }
+    }
+    content = lines.join('\n');
+  }
+
+  return content;
 }
 
 /**
@@ -282,7 +327,7 @@ export async function readFile(path: string): Promise<string | null> {
     if (!exists) return null;
 
     const [buffer] = await file.download();
-    return buffer.toString('utf-8');
+    return cleanMarkdown(buffer.toString('utf-8'));
   } catch (error) {
     console.error(`GCS readFile error for "${path}":`, error);
     return null;

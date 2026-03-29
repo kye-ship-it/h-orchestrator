@@ -44,8 +44,9 @@ def _build_system_prompt() -> str:
 - 전일 비교 데이터가 없으면 delta 컬럼에 "—"을 표시합니다.
 - Anomalies가 없으면 "이상 징후 없음"으로 표기합니다.
 - Orchestrator Notes는 데이터에 근거한 구체적이고 실행 가능한 제안을 작성합니다.
-- 코드 펜스로 감싸지 마세요. 마크다운 내용만 출력하세요.
-- frontmatter의 정확한 형식을 유지하세요."""
+- 절대 코드 펜스(```)로 감싸지 마세요. 순수 마크다운 텍스트만 출력하세요.
+- 반드시 ---로 시작하는 YAML frontmatter를 포함하세요.
+- 출력 첫 줄은 반드시 --- 여야 합니다."""
 
 
 def _format_segment_table(

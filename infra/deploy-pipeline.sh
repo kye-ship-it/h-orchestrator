@@ -19,6 +19,7 @@ for ROLE in roles/bigquery.dataViewer roles/storage.objectAdmin roles/aiplatform
   gcloud projects add-iam-policy-binding "${PROJECT}" \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="${ROLE}" \
+    --condition=None \
     --quiet
 done
 
