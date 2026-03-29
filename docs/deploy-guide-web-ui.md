@@ -59,17 +59,18 @@ h-gdcx-orchestrator/
 ### 2-1. 함수 생성
 
 1. [Cloud Functions 콘솔](https://console.cloud.google.com/functions/list?project=dl-cx-sync) 접속
-2. **"함수 만들기(CREATE FUNCTION)"** 클릭
+2. **"Write a function"** 클릭
 
 ### 2-2. 기본 설정
 
 | 항목 | 값 |
 |------|---|
-| 환경 | **2세대** |
-| 함수 이름 | `generate-daily-report` |
-| 리전 | `asia-northeast3 (Seoul)` |
-| 트리거 유형 | **HTTPS** |
-| 인증 | **인증 필요** (Require authentication) |
+| Function name | `generate-daily-report` |
+| Region | `asia-northeast3 (Seoul)` |
+| Trigger type | **HTTPS** |
+| Authentication | **Require authentication** |
+
+> Environment 선택이 보이면 **2nd gen** 선택. 안 보이면 기본값(2nd gen)으로 진행.
 
 ### 2-3. 런타임, 빌드 설정
 
