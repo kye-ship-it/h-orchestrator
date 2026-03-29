@@ -38,12 +38,12 @@ const MOCK_TREE: FileNode[] = [
     children: [
       {
         name: 'h-voice',
-        path: 'daily/hmb/',
+        path: 'daily/h-voice/hmb/',
         type: 'folder',
         children: [
-          { name: '2026-03-29.md', path: 'daily/hmb/2026-03-29.md', type: 'file' },
-          { name: '2026-03-28.md', path: 'daily/hmb/2026-03-28.md', type: 'file' },
-          { name: '2026-03-27.md', path: 'daily/hmb/2026-03-27.md', type: 'file' },
+          { name: '2026-03-29.md', path: 'daily/h-voice/hmb/2026-03-29.md', type: 'file' },
+          { name: '2026-03-28.md', path: 'daily/h-voice/hmb/2026-03-28.md', type: 'file' },
+          { name: '2026-03-27.md', path: 'daily/h-voice/hmb/2026-03-27.md', type: 'file' },
         ],
       },
     ],
@@ -55,10 +55,10 @@ const MOCK_TREE: FileNode[] = [
     children: [
       {
         name: 'h-voice',
-        path: 'reports/hmb/',
+        path: 'reports/h-voice/hmb/',
         type: 'folder',
         children: [
-          { name: '2026-03-23_2026-03-29.md', path: 'reports/hmb/2026-03-23_2026-03-29.md', type: 'file' },
+          { name: '2026-03-23_2026-03-29.md', path: 'reports/h-voice/hmb/2026-03-23_2026-03-29.md', type: 'file' },
         ],
       },
     ],
@@ -238,10 +238,10 @@ generated_at: "2026-03-29T10:00:00Z"
 `;
 
 const MOCK_FILES: Record<string, string> = {
-  'daily/hmb/2026-03-29.md': MOCK_DAILY_LOG,
-  'daily/hmb/2026-03-28.md': MOCK_DAILY_LOG.replace(/2026-03-29/g, '2026-03-28').replace('52건', '43건').replace('78.8%', '78.1%'),
-  'daily/hmb/2026-03-27.md': MOCK_DAILY_LOG.replace(/2026-03-29/g, '2026-03-27').replace('52건', '45건').replace('78.8%', '77.8%'),
-  'reports/hmb/2026-03-23_2026-03-29.md': MOCK_REPORT,
+  'daily/h-voice/hmb/2026-03-29.md': MOCK_DAILY_LOG,
+  'daily/h-voice/hmb/2026-03-28.md': MOCK_DAILY_LOG.replace(/2026-03-29/g, '2026-03-28').replace('52건', '43건').replace('78.8%', '78.1%'),
+  'daily/h-voice/hmb/2026-03-27.md': MOCK_DAILY_LOG.replace(/2026-03-29/g, '2026-03-27').replace('52건', '45건').replace('78.8%', '77.8%'),
+  'reports/h-voice/hmb/2026-03-23_2026-03-29.md': MOCK_REPORT,
 };
 
 // ---------------------------------------------------------------------------
@@ -347,13 +347,13 @@ export async function getLatestDailyLog(): Promise<{
 
   if (!bucket) {
     return {
-      path: 'daily/hmb/2026-03-29.md',
-      content: MOCK_FILES['daily/hmb/2026-03-29.md'],
+      path: 'daily/h-voice/hmb/2026-03-29.md',
+      content: MOCK_FILES['daily/h-voice/hmb/2026-03-29.md'],
     };
   }
 
   try {
-    const [files] = await bucket.getFiles({ prefix: 'daily/hmb/' });
+    const [files] = await bucket.getFiles({ prefix: 'daily/h-voice/hmb/' });
     const mdFiles = files
       .filter((f) => f.name.endsWith('.md'))
       .sort((a, b) => b.name.localeCompare(a.name));

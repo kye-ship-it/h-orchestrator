@@ -24,25 +24,29 @@
 ```
 h-gdcx-orchestrator/
 ├── daily/
-│   ├── hmb/          ← H-Voice Brazil
-│   └── hmca/         ← H-Voice (향후 확장)
+│   └── h-voice/          ← 에이전트 유형
+│       ├── hmb/          ← H-Voice Brazil
+│       └── hmca/         ← H-Voice (향후 확장)
 ├── reports/
-│   ├── hmb/
-│   └── hmca/
-├── index/            ← 임베딩 인덱스 (자동 생성됨)
-└── templates/        ← 템플릿 파일 업로드
+│   └── h-voice/
+│       ├── hmb/
+│       └── hmca/
+├── index/                ← 임베딩 인덱스 (자동 생성됨)
+└── templates/            ← 템플릿 파일 업로드
 ```
 
 1. **"폴더 만들기"** → `daily` → 만들기
-2. `daily/` 진입 → **"폴더 만들기"** → `hmb` → 만들기
-3. `daily/` 진입 → **"폴더 만들기"** → `hmca` → 만들기
-4. 버킷 루트로 돌아가기
-5. **"폴더 만들기"** → `reports` → 만들기
-6. `reports/` 진입 → **"폴더 만들기"** → `hmb` → 만들기
-7. `reports/` 진입 → **"폴더 만들기"** → `hmca` → 만들기
-8. 버킷 루트로 돌아가기
-9. **"폴더 만들기"** → `index` → 만들기
-10. **"폴더 만들기"** → `templates` → 만들기
+2. `daily/` 진입 → **"폴더 만들기"** → `h-voice` → 만들기
+3. `daily/h-voice/` 진입 → **"폴더 만들기"** → `hmb` → 만들기
+4. `daily/h-voice/` 진입 → **"폴더 만들기"** → `hmca` → 만들기
+5. 버킷 루트로 돌아가기
+6. **"폴더 만들기"** → `reports` → 만들기
+7. `reports/` 진입 → **"폴더 만들기"** → `h-voice` → 만들기
+8. `reports/h-voice/` 진입 → **"폴더 만들기"** → `hmb` → 만들기
+9. `reports/h-voice/` 진입 → **"폴더 만들기"** → `hmca` → 만들기
+10. 버킷 루트로 돌아가기
+11. **"폴더 만들기"** → `index` → 만들기
+12. **"폴더 만들기"** → `templates` → 만들기
 
 ### 1-3. 템플릿 업로드
 
