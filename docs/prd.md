@@ -302,7 +302,7 @@ generated_at: {ISO timestamp}
 #### 6.3 GCS 폴더 구조
 
 ```
-hmca-agent-logs/
+h-gdcx-orchestrator/
 ├── daily/
 │   └── h-voice/
 │       └── 2026/03/2026-03-25.md

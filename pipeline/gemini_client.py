@@ -1,18 +1,18 @@
 """Gemini client for generating daily reports via Vertex AI."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 import vertexai
 from vertexai.generative_models import GenerativeModel, GenerationConfig
 
-from pipeline.config import (
+from config import (
     GCP_PROJECT,
-    GEMINI_MODEL,
     GEMINI_LOCATION,
+    GEMINI_MODEL,
     GEMINI_TEMPERATURE,
 )
-from pipeline.mapper import DailyMetrics, Session
+from mapper import CallRecord, DailyMetrics, SegmentStats
 
 logger = logging.getLogger(__name__)
 
@@ -33,173 +33,225 @@ def _ensure_init() -> None:
 
 
 def _build_system_prompt() -> str:
-    """Build the system instruction for the Gemini model."""
-    return """You are an AI operations analyst for the H-Voice call agent system (HMCA).
-Your task is to generate a daily markdown log following the exact template structure provided.
+    """Build the system instruction for daily log generation."""
+    return """당신은 H-Voice 콜 에이전트 시스템(HMCA)의 AI 운영 분석가입니다.
+제공된 메트릭 데이터와 콜 요약을 기반으로 Daily Log 마크다운을 생���합니다.
 
-Guidelines:
-- Use the provided metrics data and session summaries to fill every section.
-- Be concise but insightful in the Summary section.
-- For delta/comparison values, use the previous day report if provided; otherwise write "N/A" for deltas.
-- Status indicators: use "🟢" for good/improved, "🟡" for neutral/stable, "🔴" for poor/declined.
-- In Success Analysis, highlight patterns in successful calls (BANT completion, transfer effectiveness).
-- In Failure Analysis, identify common failure modes and root causes.
-- In Anomalies & Alerts, list any unusual patterns. If none, write "No anomalies detected."
-- In Orchestrator Notes, provide actionable recommendations for improving agent performance.
-- Output ONLY the markdown content. Do not wrap in code fences.
-- Use the exact frontmatter format shown in the template."""
+작성 규칙:
+- 기본 언어는 한글이며, 주요 지표명(Acceptance Rate, Qualification Rate 등)은 영문으로 유지합니다.
+- Executive Summary는 3~5줄로 당일 핵심 수치, 전일 대비 변화, 주목할 패턴을 간결하게 서술합니다.
+- Status 컬럼: 개선/양호 "🟢", 보합 "🟡", 악화/주의 "🔴" 사용
+- 전일 비교 데이터가 없으면 delta 컬럼에 "—"을 표시합니다.
+- Anomalies가 없으면 "이상 징후 없음"으로 표기합니다.
+- Orchestrator Notes는 데이터에 근거한 구체적이고 실행 가능한 제안을 작성합니다.
+- 코드 펜스로 감싸지 마세요. 마크다운 내용만 출력하세요.
+- frontmatter의 정확한 형식을 유지하세요."""
 
 
-def _format_session_summary(session: Session, index: int) -> str:
-    """Format a single session into a compact summary string for the prompt."""
-    event_types = [e.event_type for e in session.events]
-    bant = session.metadata.get("bant", {})
-    bant_status = (
-        "complete"
-        if session.metadata.get("bant_complete")
-        else f"partial ({len([v for v in bant.values() if v])}/4)"
-    )
-    duration = session.metadata.get("duration_seconds", 0)
-    transferred = session.metadata.get("transferred", False)
-    disposition = session.metadata.get("disposition", "unknown")
+def _format_segment_table(
+    segments: dict[str, SegmentStats], top_n: int = 10
+) -> str:
+    """Format segment stats into a markdown table body."""
+    sorted_segs = sorted(
+        segments.items(), key=lambda x: x[1].calls, reverse=True
+    )[:top_n]
+    lines = []
+    for name, s in sorted_segs:
+        lines.append(
+            f"| {name} | {s.calls} | {s.acceptance_rate}% | {s.qualification_rate}% |"
+        )
+    return "\n".join(lines) if lines else "| (데이터 없음) | — | — | — |"
 
-    return (
-        f"Session {index + 1} [{session.session_id[:8]}]: "
-        f"duration={duration:.0f}s, "
-        f"events=[{' → '.join(event_types)}], "
-        f"BANT={bant_status}, "
-        f"transferred={'yes' if transferred else 'no'}, "
-        f"disposition={disposition}"
-    )
+
+def _format_dealer_table(
+    segments: dict[str, SegmentStats], top_n: int = 10
+) -> str:
+    """Format dealer stats sorted by consent rate."""
+    sorted_segs = sorted(
+        segments.items(), key=lambda x: x[1].consent_rate, reverse=True
+    )[:top_n]
+    lines = []
+    for name, s in sorted_segs:
+        lines.append(
+            f"| {name} | {s.calls} | {s.consent_rate}% | {s.testdrive} |"
+        )
+    return "\n".join(lines) if lines else "| (데이터 없음) | — | — | — |"
+
+
+def _format_channel_table(segments: dict[str, SegmentStats]) -> str:
+    """Format channel stats."""
+    lines = []
+    for name, s in sorted(segments.items(), key=lambda x: x[1].calls, reverse=True):
+        lines.append(f"| {name} | {s.calls} | {s.acceptance_rate}% |")
+    return "\n".join(lines) if lines else "| (데이터 없음) | — | — |"
+
+
+def _format_call_summary(call: CallRecord, index: int) -> str:
+    """Format a single call into a compact summary for the prompt."""
+    parts = [
+        f"콜 {index + 1} [{call.call_id[:12]}]:",
+        f"고객={call.customer_name},",
+        f"시간={call.call_duration}초,",
+        f"type={call.call_type},",
+        f"차종={call.model_of_interest},",
+        f"딜러동의={call.dealer_consent or 'N/A'},",
+        f"시승={call.test_drive_slot or 'N/A'},",
+    ]
+    if call.summary:
+        parts.append(f"요약={call.summary[:100]}")
+    return " ".join(parts)
 
 
 def _build_user_prompt(
     metrics: DailyMetrics,
-    sessions: list[Session],
+    records: list[CallRecord],
     date: str,
     previous_report: str | None = None,
 ) -> str:
-    """Build the user prompt containing all data for report generation."""
+    """Build the user prompt with structured data for report generation."""
+    q = metrics.qualification
     parts: list[str] = []
 
-    parts.append(f"Generate the H-Voice Daily Log for {date}.")
+    parts.append(f"{date}의 H-Voice Daily Log를 생성하세요.")
     parts.append("")
 
-    # Template structure reminder.
-    parts.append("## Template Structure")
-    parts.append("""Use this exact markdown structure:
----
+    # Template reminder
+    parts.append("## 사용할 템플릿 구조")
+    parts.append(f"""---
 date: {date}
 agent: h-voice-call
 type: daily-log
-generated_at: {timestamp}
+generated_at: {datetime.now(timezone.utc).isoformat()}
 ---
 
 # H-Voice Daily Log — {date}
 
-## Summary
-> {one-paragraph summary}
-
-## Key Metrics
-| Metric | Value | vs Prev Day | Status |
-|--------|-------|-------------|--------|
-| Total Calls | {value} | {delta} | {status} |
-| Connection Rate | {value}% | {delta}pp | {status} |
-| BANT Completion Rate | {value}% | {delta}pp | {status} |
-| Avg Call Duration | {value}s | {delta}s | {status} |
-| Dealer Transfer Rate | {value}% | {delta}pp | {status} |
-
-## Session Breakdown
-### Success Analysis
-{analysis of successful sessions}
-
-### Failure Analysis
-{analysis of failed sessions}
-
-## Anomalies & Alerts
-{anomalies list or "No anomalies detected."}
-
-## Orchestrator Notes
-{actionable recommendations}
+## Executive Summary
+> (3~5줄 핵심 요약)
 
 ---
-*Generated by HMCA Agent Monitoring System*""")
+
+## 1. Call Funnel Metrics
+(테이블: Stage | Count | Rate | vs Prev Day | Status)
+
+## 2. Qualification Depth (퀄리피케이션 수집 현황)
+(테이블: 항목 | 수집 건수 | 수집률)
+
+## 3. Call Performance (콜 성과)
+(테이블: 지표 | 값 | vs Prev Day)
+
+## 4. Model & Dealer Insights (차종 및 딜러 분석)
+### 차종별 현황 / 딜러별 현황 / 채널별 현황
+
+## 5. Anomalies & Alerts (이상 징후)
+
+## 6. Orchestrator Notes (분석 소견)
+
+---
+*Generated by H-Orchestrator Agent Monitoring System*""")
     parts.append("")
 
-    # Metrics data.
-    parts.append("## Today's Metrics Data")
-    parts.append(f"- Date: {metrics.date}")
+    # Funnel data
+    parts.append("## 당일 Funnel 데이터")
     parts.append(f"- Total Calls: {metrics.total_calls}")
-    parts.append(f"- Connected Calls: {metrics.connected_calls}")
-    parts.append(f"- Connection Rate: {metrics.connection_rate}%")
-    parts.append(f"- BANT Completion Rate: {metrics.bant_completion_rate}%")
-    parts.append(f"- Avg Duration: {metrics.avg_duration_seconds}s")
-    parts.append(f"- Transfer Rate: {metrics.transfer_rate}%")
-    parts.append(f"- Successful Sessions: {len(metrics.success_sessions)}")
-    parts.append(f"- Failed Sessions: {len(metrics.failure_sessions)}")
-    parts.append(f"- Anomalies: {len(metrics.anomalies)}")
+    parts.append(f"- Voicemail: {metrics.voicemail_count} ({metrics.voicemail_rate}%)")
+    parts.append(f"- Hung Up (조기 종료): {metrics.hungup_count} ({metrics.hungup_rate}%)")
+    parts.append(f"- Connected: {metrics.connected_count} ({metrics.connected_rate}%)")
+    parts.append(f"- Accepted: {metrics.accepted_count} ({metrics.accepted_rate}% of connected)")
+    parts.append(f"- Qualified: {metrics.qualified_count} ({metrics.qualified_rate}% of accepted)")
+    parts.append(f"- Dealer Consent: {metrics.consent_count} ({metrics.consent_rate}% of accepted)")
+    parts.append(f"- Test Drive Scheduled: {metrics.testdrive_count} ({metrics.testdrive_rate}% of accepted)")
     parts.append("")
 
+    # Qualification depth
+    parts.append("## Qualification Depth 데이터")
+    parts.append(f"- Model of Interest: {q.model_count}/{q.total_accepted} ({q.model_rate}%)")
+    parts.append(f"- Trim: {q.trim_count}/{q.total_accepted} ({q.trim_rate}%)")
+    parts.append(f"- Timeframe: {q.timeframe_count}/{q.total_accepted} ({q.timeframe_rate}%)")
+    parts.append(f"- Payment Method: {q.payment_count}/{q.total_accepted} ({q.payment_rate}%)")
+    parts.append(f"- Trade-in: {q.tradein_count}/{q.total_accepted} ({q.tradein_rate}%)")
+    parts.append(f"- Test Drive Interest: {q.testdrive_count}/{q.total_accepted} ({q.testdrive_rate}%)")
+    parts.append(f"- Test Drive Slot: {q.slot_count}/{q.total_accepted} ({q.slot_rate}%)")
+    parts.append(f"- Preferred Channel: {q.channel_count}/{q.total_accepted} ({q.channel_rate}%)")
+    parts.append("")
+
+    # Call performance
+    parts.append("## Call Performance 데이터")
+    parts.append(f"- 평균 통화 시간 (전체): {metrics.avg_duration_all}초")
+    parts.append(f"- 평균 통화 시간 (Accepted): {metrics.avg_duration_accepted}초")
+    parts.append(f"- 평균 통화 시간 (Voicemail): {metrics.avg_duration_voicemail}초")
+    parts.append(f"- 고객 종료 비율: {metrics.ended_customer_rate}%")
+    parts.append(f"- AI 종료 비율: {metrics.ended_ai_rate}%")
+    parts.append("")
+
+    # Segments
+    parts.append("## 차종별 데이터")
+    parts.append(_format_segment_table(metrics.model_segments))
+    parts.append("")
+    parts.append("## 딜러별 데이터 (Consent Rate 상위)")
+    parts.append(_format_dealer_table(metrics.dealer_segments))
+    parts.append("")
+    parts.append("## 채널별 데이터")
+    parts.append(_format_channel_table(metrics.channel_segments))
+    parts.append("")
+
+    # Anomalies
     if metrics.anomalies:
-        parts.append("## Detected Anomalies")
-        for anomaly in metrics.anomalies:
-            parts.append(f"- {anomaly}")
-        parts.append("")
+        parts.append("## 감지된 이상 징후")
+        for a in metrics.anomalies:
+            parts.append(f"- {a}")
+    else:
+        parts.append("## 감지된 이상 징후: 없음")
+    parts.append("")
 
-    # Session summaries — cap to avoid exceeding context.
-    max_sessions_in_prompt = 50
+    # Call summaries (cap at 30)
+    max_calls = 30
+    if metrics.accepted_calls:
+        parts.append(f"## Accepted 콜 상세 ({len(metrics.accepted_calls)}건)")
+        for i, c in enumerate(metrics.accepted_calls[:max_calls]):
+            parts.append(_format_call_summary(c, i))
+        if len(metrics.accepted_calls) > max_calls:
+            parts.append(f"... 외 {len(metrics.accepted_calls) - max_calls}건")
+    parts.append("")
 
-    if metrics.success_sessions:
-        parts.append(f"## Successful Sessions ({len(metrics.success_sessions)} total)")
-        for i, s in enumerate(metrics.success_sessions[:max_sessions_in_prompt]):
-            parts.append(_format_session_summary(s, i))
-        if len(metrics.success_sessions) > max_sessions_in_prompt:
-            parts.append(f"... and {len(metrics.success_sessions) - max_sessions_in_prompt} more")
-        parts.append("")
+    if metrics.failed_calls:
+        parts.append(f"## 미수락/실패 콜 ({len(metrics.failed_calls)}건)")
+        for i, c in enumerate(metrics.failed_calls[:max_calls]):
+            parts.append(_format_call_summary(c, i))
+        if len(metrics.failed_calls) > max_calls:
+            parts.append(f"... 외 {len(metrics.failed_calls) - max_calls}건")
+    parts.append("")
 
-    if metrics.failure_sessions:
-        parts.append(f"## Failed Sessions ({len(metrics.failure_sessions)} total)")
-        for i, s in enumerate(metrics.failure_sessions[:max_sessions_in_prompt]):
-            parts.append(_format_session_summary(s, i))
-        if len(metrics.failure_sessions) > max_sessions_in_prompt:
-            parts.append(f"... and {len(metrics.failure_sessions) - max_sessions_in_prompt} more")
-        parts.append("")
-
-    # Previous day report for comparison.
+    # Previous report for comparison
     if previous_report:
-        parts.append("## Previous Day Report (for comparison)")
-        # Truncate if very long.
+        parts.append("## 전일 Daily Log (비교용)")
         if len(previous_report) > 3000:
             parts.append(previous_report[:3000])
             parts.append("... [truncated]")
         else:
             parts.append(previous_report)
     else:
-        parts.append("## Previous Day Report")
-        parts.append("No previous day report available. Use 'N/A' for all delta/comparison values.")
+        parts.append("## 전일 Daily Log: 없음 — delta 컬럼에 '—' 표시")
 
     return "\n".join(parts)
 
 
 def generate_daily_report(
     metrics: DailyMetrics,
-    sessions: list[Session],
+    records: list[CallRecord],
     date: str,
     previous_report: str | None = None,
 ) -> str:
     """Generate a daily markdown report using Gemini via Vertex AI.
 
     Args:
-        metrics: Aggregated daily metrics.
-        sessions: All sessions for the day.
+        metrics: Aggregated daily funnel metrics.
+        records: All CallRecords for the day.
         date: Target date in YYYY-MM-DD format.
         previous_report: Previous day's report markdown for delta comparisons.
 
     Returns:
         Generated markdown report content.
-
-    Raises:
-        Exception: On Vertex AI / Gemini API errors.
     """
     _ensure_init()
 
@@ -210,10 +262,10 @@ def generate_daily_report(
 
     generation_config = GenerationConfig(
         temperature=GEMINI_TEMPERATURE,
-        max_output_tokens=4096,
+        max_output_tokens=8192,
     )
 
-    user_prompt = _build_user_prompt(metrics, sessions, date, previous_report)
+    user_prompt = _build_user_prompt(metrics, records, date, previous_report)
 
     logger.info(
         "Generating daily report for %s (prompt length: %d chars)", date, len(user_prompt)

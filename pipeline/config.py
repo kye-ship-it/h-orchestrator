@@ -3,14 +3,21 @@
 import os
 
 GCP_PROJECT = os.getenv("GCP_PROJECT", "dl-cx-sync")
-GCS_BUCKET = os.getenv("GCS_BUCKET", "hmca-agent-logs")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
-GEMINI_LOCATION = os.getenv("GEMINI_LOCATION", "us-central1")
+GCS_BUCKET = os.getenv("GCS_BUCKET", "h-gdcx-orchestrator")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite-preview-06-17")
+GEMINI_LOCATION = os.getenv("GEMINI_LOCATION", "asia-northeast3")
 GEMINI_TEMPERATURE = 0.3
 
-# BigQuery
-BQ_DATASET = os.getenv("BQ_DATASET", "")  # To be configured after schema check
-BQ_TABLE_PREFIX = "hvoice"
+# BigQuery source tables (STG — ODS transformations applied in query)
+BQ_META_TABLE = os.getenv(
+    "BQ_META_TABLE", "dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_meta"
+)
+BQ_LEAD_TABLE = os.getenv(
+    "BQ_LEAD_TABLE", "dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_lead"
+)
+BQ_ANALYSIS_TABLE = os.getenv(
+    "BQ_ANALYSIS_TABLE", "dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_analysis"
+)
 
 # GCS paths
 GCS_DAILY_PREFIX = "daily/h-voice"

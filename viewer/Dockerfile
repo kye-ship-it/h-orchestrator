@@ -1,10 +1,10 @@
 FROM node:20-alpine AS base
 
-# Dependencies
+# Dependencies (production only for runner)
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 # Build
 FROM base AS builder

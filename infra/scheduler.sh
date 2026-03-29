@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT="dl-cx-sync"
-REGION="us-central1"
+REGION="asia-northeast3"
 JOB_NAME="daily-hvoice-report"
 
 # Get the Cloud Function URL

@@ -1,27 +1,21 @@
 """GCS-backed embedding index for semantic search (QMD).
 
 Manages a JSON index stored at ``index/embeddings.json`` in the configured
-GCS bucket.  Each entry represents one markdown file with its frontmatter
-and per-chunk embeddings.
+GCS bucket.
 """
 
 import json
 import logging
 
-from pipeline.config import GCS_INDEX_PATH
-from pipeline.embedding_client import build_file_index
-from pipeline.gcs_client import list_files, read_markdown, upload_markdown
+from config import GCS_INDEX_PATH
+from embedding_client import build_file_index
+from gcs_client import list_files, read_markdown, upload_markdown
 
 logger = logging.getLogger(__name__)
 
 
 def load_index() -> list[dict]:
-    """Load the embedding index from GCS.
-
-    Returns:
-        List of file index entries, or an empty list if the index does not
-        exist yet.
-    """
+    """Load the embedding index from GCS."""
     raw = read_markdown(GCS_INDEX_PATH)
     if raw is None:
         logger.info("No existing index found at %s; starting fresh", GCS_INDEX_PATH)
@@ -40,30 +34,17 @@ def load_index() -> list[dict]:
 
 
 def save_index(index: list[dict]) -> None:
-    """Persist the embedding index to GCS as JSON.
-
-    Args:
-        index: Full index (list of file entry dicts) to store.
-    """
+    """Persist the embedding index to GCS as JSON."""
     payload = json.dumps(index, ensure_ascii=False)
     upload_markdown(payload, GCS_INDEX_PATH)
     logger.info("Saved index with %d entries to %s", len(index), GCS_INDEX_PATH)
 
 
 def add_to_index(file_entry: dict) -> None:
-    """Upsert a file entry in the index.
-
-    If an entry with the same ``path`` already exists it is replaced;
-    otherwise the new entry is appended.
-
-    Args:
-        file_entry: Dict produced by
-            :func:`~pipeline.embedding_client.build_file_index`.
-    """
+    """Upsert a file entry in the index."""
     index = load_index()
     path = file_entry["path"]
 
-    # Remove existing entry for this path (upsert).
     index = [e for e in index if e.get("path") != path]
     index.append(file_entry)
 
@@ -72,13 +53,7 @@ def add_to_index(file_entry: dict) -> None:
 
 
 def remove_from_index(path: str) -> None:
-    """Remove an entry from the index by its GCS path.
-
-    No-op if the path is not present.
-
-    Args:
-        path: GCS object path to remove.
-    """
+    """Remove an entry from the index by its GCS path."""
     index = load_index()
     original_len = len(index)
     index = [e for e in index if e.get("path") != path]
@@ -91,16 +66,8 @@ def remove_from_index(path: str) -> None:
 
 
 def rebuild_index() -> list[dict]:
-    """Rebuild the entire embedding index from all ``.md`` files in GCS.
-
-    Scans all known prefixes for markdown files, generates embeddings for
-    each, and overwrites the stored index.  Useful for initial setup or
-    disaster recovery.
-
-    Returns:
-        The newly built index.
-    """
-    from pipeline.config import GCS_DAILY_PREFIX, GCS_REPORTS_PREFIX
+    """Rebuild the entire embedding index from all .md files in GCS."""
+    from config import GCS_DAILY_PREFIX, GCS_REPORTS_PREFIX
 
     prefixes = [GCS_DAILY_PREFIX, GCS_REPORTS_PREFIX]
     all_paths: list[str] = []

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 PROJECT="dl-cx-sync"
-BUCKET="hmca-agent-logs"
-REGION="us-central1"
+BUCKET="h-gdcx-orchestrator"
+REGION="asia-northeast3"
 
 echo "Creating GCS bucket: gs://${BUCKET}"
 gcloud storage buckets create "gs://${BUCKET}" \

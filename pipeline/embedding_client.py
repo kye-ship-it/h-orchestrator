@@ -11,7 +11,7 @@ import vertexai
 import yaml
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 
-from pipeline.config import (
+from config import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL,
     GCP_PROJECT,
@@ -53,15 +53,9 @@ def generate_embeddings(
     Args:
         texts: Texts to embed.
         task_type: Vertex AI task type.
-            Use ``RETRIEVAL_DOCUMENT`` for indexing and
-            ``RETRIEVAL_QUERY`` for search queries.
 
     Returns:
         List of embedding vectors (each 768-dim floats).
-
-    Raises:
-        ValueError: If *texts* is empty.
-        google.api_core.exceptions.GoogleAPICallError: On API failure.
     """
     if not texts:
         raise ValueError("texts must be a non-empty list")
@@ -97,11 +91,7 @@ def generate_embeddings(
 # ---------------------------------------------------------------------------
 
 def _split_frontmatter(content: str) -> tuple[dict | None, str]:
-    """Separate YAML frontmatter from markdown body.
-
-    Returns:
-        Tuple of (parsed frontmatter dict or None, remaining body).
-    """
+    """Separate YAML frontmatter from markdown body."""
     match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
     if not match:
         return None, content
@@ -128,7 +118,6 @@ def _sub_chunk(text: str, target: int = _SUB_CHUNK_TARGET, overlap: int = _SUB_C
     for sentence in sentences:
         if current_len + len(sentence) > target and current:
             chunks.append(" ".join(current))
-            # Keep tail sentences for overlap.
             overlap_text = ""
             overlap_sentences: list[str] = []
             for s in reversed(current):
@@ -148,33 +137,19 @@ def _sub_chunk(text: str, target: int = _SUB_CHUNK_TARGET, overlap: int = _SUB_C
 
 
 def chunk_markdown(content: str) -> list[dict]:
-    """Split markdown content into section-based chunks for embedding.
-
-    Each chunk is a dict with keys ``section``, ``text``, and ``start_line``.
-    Frontmatter is emitted as a separate chunk with section ``"Frontmatter"``.
-    Long sections (>{_MAX_SECTION_LENGTH} chars) are split into sub-chunks.
-    Empty sections are skipped.
-
-    Args:
-        content: Full markdown string (may include YAML frontmatter).
-
-    Returns:
-        List of chunk dicts ready for embedding.
-    """
+    """Split markdown content into section-based chunks for embedding."""
     if not content or not content.strip():
         return []
 
     chunks: list[dict] = []
     fm, body = _split_frontmatter(content)
 
-    # Count lines consumed by frontmatter.
     fm_lines = 0
     if fm is not None:
         fm_match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
         if fm_match:
             fm_text = fm_match.group(0)
             fm_lines = fm_text.count("\n")
-            # Emit frontmatter as a chunk with key metadata.
             fm_summary_parts = [f"{k}: {v}" for k, v in fm.items()]
             fm_summary = "\n".join(fm_summary_parts)
             if fm_summary.strip():
@@ -184,7 +159,6 @@ def chunk_markdown(content: str) -> list[dict]:
                     "start_line": 1,
                 })
 
-    # Split body by ## headers.
     lines = body.split("\n")
     sections: list[tuple[str, int, list[str]]] = []
     current_section = "Introduction"
@@ -194,7 +168,6 @@ def chunk_markdown(content: str) -> list[dict]:
     for i, line in enumerate(lines):
         header_match = re.match(r"^##\s+(.+)$", line)
         if header_match:
-            # Flush previous section.
             if current_lines:
                 sections.append((current_section, current_start, current_lines))
             current_section = header_match.group(1).strip()
@@ -203,7 +176,6 @@ def chunk_markdown(content: str) -> list[dict]:
         else:
             current_lines.append(line)
 
-    # Flush last section.
     if current_lines:
         sections.append((current_section, current_start, current_lines))
 
@@ -236,18 +208,7 @@ def chunk_markdown(content: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def build_file_index(path: str, content: str) -> dict:
-    """Build a search index entry for a single markdown file.
-
-    Parses frontmatter, chunks the content, generates embeddings for every
-    chunk, and returns a dict suitable for the GCS embedding index.
-
-    Args:
-        path: GCS object path (e.g. ``daily/h-voice/2026/03/2026-03-25.md``).
-        content: Full markdown file content.
-
-    Returns:
-        Index entry dict with ``path``, ``frontmatter``, and ``chunks`` keys.
-    """
+    """Build a search index entry for a single markdown file."""
     fm, _ = _split_frontmatter(content)
     chunks = chunk_markdown(content)
 

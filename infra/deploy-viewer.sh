@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT="dl-cx-sync"
-REGION="us-central1"
+REGION="asia-northeast3"
 SERVICE_NAME="hmca-viewer"
 SA_EMAIL="${SERVICE_NAME}@${PROJECT}.iam.gserviceaccount.com"
 
@@ -22,14 +22,17 @@ for ROLE in roles/storage.objectViewer roles/storage.objectCreator roles/bigquer
     --quiet
 done
 
-# Deploy from source
+# Deploy from source (Cloud Build will use Dockerfile)
 gcloud run deploy "${SERVICE_NAME}" \
   --source ./viewer \
   --region "${REGION}" \
   --project "${PROJECT}" \
   --allow-unauthenticated \
   --service-account "${SA_EMAIL}" \
-  --set-env-vars "GCS_BUCKET=hmca-agent-logs,GCP_PROJECT=${PROJECT},GEMINI_MODEL=gemini-3.1-flash-lite-preview" \
+  --set-env-vars "\
+GCS_BUCKET=h-gdcx-orchestrator,\
+GCP_PROJECT=${PROJECT},\
+GEMINI_MODEL=gemini-2.5-flash-lite-preview-06-17" \
   --memory 512Mi \
   --min-instances 0
 

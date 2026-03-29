@@ -149,7 +149,7 @@ export async function loadIndex(): Promise<IndexEntry[] | null> {
 
   try {
     const { Storage } = await import('@google-cloud/storage');
-    const bucketName = process.env.GCS_BUCKET ?? 'hmca-agent-logs';
+    const bucketName = process.env.GCS_BUCKET ?? 'h-gdcx-orchestrator';
     const storage = new Storage();
     const bucket = storage.bucket(bucketName);
     const file = bucket.file(INDEX_PATH);
