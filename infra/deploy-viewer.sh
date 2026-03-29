@@ -32,7 +32,11 @@ gcloud run deploy "${SERVICE_NAME}" \
   --set-env-vars "\
 GCS_BUCKET=h-gdcx-orchestrator,\
 GCP_PROJECT=${PROJECT},\
-GEMINI_MODEL=gemini-2.5-flash-lite-preview-06-17" \
+GEMINI_MODEL=gemini-2.5-flash-lite,\
+GEMINI_LOCATION=us-central1,\
+BQ_META_TABLE=${PROJECT}.HQ_DW_PRD.ods_hmb_hvoice_meta,\
+BQ_LEAD_TABLE=${PROJECT}.HQ_DW_PRD.ods_hmb_hvoice_lead,\
+BQ_ANALYSIS_TABLE=${PROJECT}.HQ_DW_PRD.ods_hmb_hvoice_analysis" \
   --memory 512Mi \
   --min-instances 0
 
