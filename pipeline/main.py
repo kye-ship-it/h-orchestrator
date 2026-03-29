@@ -152,6 +152,110 @@ def generate_daily_log(request):
 
 
 @functions_framework.http
+def backfill_daily_logs(request):
+    """HTTP Cloud Function: generate daily logs for a date range.
+
+    Accepts POST with JSON body:
+        - start_date: str (YYYY-MM-DD, required)
+        - end_date: str (YYYY-MM-DD, required)
+
+    Iterates through each date, calling the same pipeline logic.
+    Skips dates with no data. Returns summary of results.
+    """
+    try:
+        body = request.get_json(silent=True)
+        if not body:
+            return _json_response(
+                {"error": "Request body required with start_date and end_date."},
+                400,
+            )
+
+        start_date = body.get("start_date")
+        end_date = body.get("end_date")
+
+        if not start_date or not end_date:
+            return _json_response(
+                {"error": "Both start_date and end_date are required."},
+                400,
+            )
+
+        for d in (start_date, end_date):
+            if not _validate_date(d):
+                return _json_response(
+                    {"error": f"Invalid date format: {d}. Use YYYY-MM-DD."},
+                    400,
+                )
+
+        logger.info("=== Backfill: %s ~ %s ===", start_date, end_date)
+
+        current = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+
+        results = {"success": [], "no_data": [], "failed": []}
+
+        while current <= end:
+            date_str = current.strftime("%Y-%m-%d")
+            logger.info("--- Backfill processing: %s ---", date_str)
+
+            try:
+                raw_rows = fetch_daily_calls(date_str)
+
+                if not raw_rows:
+                    logger.info("No data for %s, skipping", date_str)
+                    results["no_data"].append(date_str)
+                    current += timedelta(days=1)
+                    continue
+
+                records = map_to_call_records(raw_rows)
+                metrics = compute_daily_metrics(records)
+                previous_report = get_previous_day_report(date_str)
+                report_content = generate_daily_report(metrics, records, date_str, previous_report)
+                gcs_uri = store_daily_report(report_content, date_str)
+
+                # Update embedding index.
+                try:
+                    from config import GCS_DAILY_PREFIX
+                    report_path = f"{GCS_DAILY_PREFIX}/{date_str}.md"
+                    file_entry = build_file_index(report_path, report_content)
+                    add_to_index(file_entry)
+                except Exception:
+                    logger.exception("Embedding index update failed for %s (non-fatal)", date_str)
+
+                results["success"].append(date_str)
+                logger.info("Backfill success: %s → %s", date_str, gcs_uri)
+
+            except Exception as e:
+                logger.exception("Backfill failed for %s", date_str)
+                results["failed"].append({"date": date_str, "error": str(e)})
+
+            current += timedelta(days=1)
+
+        logger.info(
+            "=== Backfill complete: %d success, %d no_data, %d failed ===",
+            len(results["success"]),
+            len(results["no_data"]),
+            len(results["failed"]),
+        )
+
+        return _json_response({
+            "status": "complete",
+            "summary": {
+                "success_count": len(results["success"]),
+                "no_data_count": len(results["no_data"]),
+                "failed_count": len(results["failed"]),
+            },
+            "details": results,
+        })
+
+    except Exception as e:
+        logger.exception("Backfill failed")
+        return _json_response(
+            {"status": "error", "error": str(e), "error_type": type(e).__name__},
+            500,
+        )
+
+
+@functions_framework.http
 def rebuild_search_index(request):
     """HTTP Cloud Function: rebuild the full semantic search embedding index."""
     try:
