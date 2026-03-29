@@ -1,23 +1,41 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import matter from "gray-matter";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
+
+function parseFrontmatterSimple(raw: string): { content: string; frontmatter: Record<string, string> } {
+  const match = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
+  if (!match) return { content: raw, frontmatter: {} };
+
+  const fm: Record<string, string> = {};
+  for (const line of match[1].split("\n")) {
+    const idx = line.indexOf(":");
+    if (idx > 0) {
+      fm[line.slice(0, idx).trim()] = line.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+    }
+  }
+  return { content: match[2], frontmatter: fm };
+}
 
 export default function LogViewer({
   filePath,
+  initialRaw,
   initialContent,
+  frontmatter: initialFrontmatter,
 }: {
   filePath: string;
+  initialRaw: string;
   initialContent: string;
+  frontmatter: Record<string, string>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [rawContent, setRawContent] = useState(initialContent);
-  const [editContent, setEditContent] = useState(initialContent);
+  const [rawContent, setRawContent] = useState(initialRaw);
+  const [displayContent, setDisplayContent] = useState(initialContent);
+  const [frontmatter, setFrontmatter] = useState(initialFrontmatter);
+  const [editContent, setEditContent] = useState(initialRaw);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
 
-  const { data: frontmatter, content } = matter(rawContent);
   const pathParts = filePath.replace(/\.md$/, "").split("/");
 
   const handleEdit = useCallback(() => {
@@ -42,11 +60,12 @@ export default function LogViewer({
         body: JSON.stringify({ path: filePath, content: editContent }),
       });
 
-      if (!res.ok) {
-        throw new Error("Save failed");
-      }
+      if (!res.ok) throw new Error("Save failed");
 
       setRawContent(editContent);
+      const parsed = parseFrontmatterSimple(editContent);
+      setDisplayContent(parsed.content);
+      setFrontmatter(parsed.frontmatter);
       setIsEditing(false);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
@@ -111,22 +130,22 @@ export default function LogViewer({
       <div className="mb-8 flex flex-wrap items-center gap-2">
         {frontmatter.date && (
           <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-            {String(frontmatter.date)}
+            {frontmatter.date}
           </span>
         )}
         {frontmatter.agent && (
           <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
-            {String(frontmatter.agent)}
+            {frontmatter.agent}
           </span>
         )}
         {frontmatter.type && (
           <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
-            {String(frontmatter.type)}
+            {frontmatter.type}
           </span>
         )}
         {frontmatter.period && (
           <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-            {String(frontmatter.period)}
+            {frontmatter.period}
           </span>
         )}
       </div>
@@ -140,7 +159,7 @@ export default function LogViewer({
           spellCheck={false}
         />
       ) : (
-        <MarkdownRenderer content={content} />
+        <MarkdownRenderer content={displayContent} />
       )}
     </div>
   );

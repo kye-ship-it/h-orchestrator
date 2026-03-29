@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import matter from "gray-matter";
 import { readFile } from "@/lib/gcs";
 import LogViewer from "./LogViewer";
 
@@ -15,5 +16,16 @@ export default async function LogPage({
   const rawContent = await readFile(filePath);
   if (!rawContent) notFound();
 
-  return <LogViewer filePath={filePath} initialContent={rawContent} />;
+  const { data: frontmatter, content } = matter(rawContent);
+
+  return (
+    <LogViewer
+      filePath={filePath}
+      initialRaw={rawContent}
+      initialContent={content}
+      frontmatter={Object.fromEntries(
+        Object.entries(frontmatter).map(([k, v]) => [k, String(v)])
+      )}
+    />
+  );
 }
