@@ -28,9 +28,7 @@ h-gdcx-orchestrator/
 │       ├── hmb/          ← H-Voice Brazil
 │       └── hmca/         ← H-Voice (향후 확장)
 ├── reports/
-│   └── h-voice/
-│       ├── hmb/
-│       └── hmca/
+│   └── h-voice/          ← 법인별/통합 리포트 모두 여기에 생성
 ├── index/                ← 임베딩 인덱스 (자동 생성됨)
 └── templates/            ← 템플릿 파일 업로드
 ```
@@ -42,11 +40,9 @@ h-gdcx-orchestrator/
 5. 버킷 루트로 돌아가기
 6. **"폴더 만들기"** → `reports` → 만들기
 7. `reports/` 진입 → **"폴더 만들기"** → `h-voice` → 만들기
-8. `reports/h-voice/` 진입 → **"폴더 만들기"** → `hmb` → 만들기
-9. `reports/h-voice/` 진입 → **"폴더 만들기"** → `hmca` → 만들기
-10. 버킷 루트로 돌아가기
-11. **"폴더 만들기"** → `index` → 만들기
-12. **"폴더 만들기"** → `templates` → 만들기
+8. 버킷 루트로 돌아가기
+9. **"폴더 만들기"** → `index` → 만들기
+10. **"폴더 만들기"** → `templates` → 만들기
 
 ### 1-3. 템플릿 업로드
 

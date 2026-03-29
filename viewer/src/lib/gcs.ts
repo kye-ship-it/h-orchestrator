@@ -55,10 +55,10 @@ const MOCK_TREE: FileNode[] = [
     children: [
       {
         name: 'h-voice',
-        path: 'reports/h-voice/hmb/',
+        path: 'reports/h-voice/',
         type: 'folder',
         children: [
-          { name: '2026-03-23_2026-03-29.md', path: 'reports/h-voice/hmb/2026-03-23_2026-03-29.md', type: 'file' },
+          { name: '2026-03-23_2026-03-29.md', path: 'reports/h-voice/2026-03-23_2026-03-29.md', type: 'file' },
         ],
       },
     ],
@@ -241,7 +241,7 @@ const MOCK_FILES: Record<string, string> = {
   'daily/h-voice/hmb/2026-03-29.md': MOCK_DAILY_LOG,
   'daily/h-voice/hmb/2026-03-28.md': MOCK_DAILY_LOG.replace(/2026-03-29/g, '2026-03-28').replace('52건', '43건').replace('78.8%', '78.1%'),
   'daily/h-voice/hmb/2026-03-27.md': MOCK_DAILY_LOG.replace(/2026-03-29/g, '2026-03-27').replace('52건', '45건').replace('78.8%', '77.8%'),
-  'reports/h-voice/hmb/2026-03-23_2026-03-29.md': MOCK_REPORT,
+  'reports/h-voice/2026-03-23_2026-03-29.md': MOCK_REPORT,
 };
 
 // ---------------------------------------------------------------------------
