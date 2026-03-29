@@ -78,7 +78,7 @@ SELECT
 FROM `{BQ_META_TABLE}` m
 LEFT JOIN `{BQ_ANALYSIS_TABLE}` a ON m.call_id = a.call_id
 LEFT JOIN `{BQ_LEAD_TABLE}` l ON SAFE_CAST(m.lead_id AS STRING) = l.lead_id
-WHERE DATE(m.call_created_at) = @target_date
+WHERE DATE(m.call_created_at, 'America/Sao_Paulo') = @target_date
 ORDER BY m.call_created_at ASC
 """
 
@@ -126,8 +126,8 @@ def fetch_date_range_calls(
     client = _get_client()
     base_query = _build_daily_query()
     query = base_query.replace(
-        "WHERE DATE(m.call_created_at) = @target_date",
-        "WHERE DATE(m.call_created_at) BETWEEN @start_date AND @end_date",
+        "WHERE DATE(m.call_created_at, 'America/Sao_Paulo') = @target_date",
+        "WHERE DATE(m.call_created_at, 'America/Sao_Paulo') BETWEEN @start_date AND @end_date",
     )
 
     job_config = bigquery.QueryJobConfig(

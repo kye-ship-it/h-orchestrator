@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import functions_framework
+from zoneinfo import ZoneInfo
 
 from bq_client import fetch_daily_calls
 from mapper import map_to_call_records, compute_daily_metrics
@@ -122,10 +123,12 @@ def generate_daily_log(request):
             })
 
         # --- Single day mode ---
+        # Default: yesterday in BRT (America/Sao_Paulo)
+        BRT = ZoneInfo("America/Sao_Paulo")
         target_date = (
             body.get("target_date")
             or request.args.get("target_date")
-            or (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+            or (datetime.now(BRT) - timedelta(days=1)).strftime("%Y-%m-%d")
         )
 
         if not _validate_date(target_date):
