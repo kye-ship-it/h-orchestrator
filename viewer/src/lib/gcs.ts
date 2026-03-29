@@ -284,6 +284,9 @@ function cleanMarkdown(raw: string): string {
     content = fenceMatch[1].trim();
   }
 
+  // Ensure blank line between headings and tables (markdown requires it)
+  content = content.replace(/(^#{1,6}\s+.+)(\n)((?:\|.+\|))/gm, '$1\n\n$3');
+
   // Ensure frontmatter starts with ---
   if (/^[a-z_]+\s*:/.test(content) && !content.startsWith('---')) {
     content = '---\n' + content;
