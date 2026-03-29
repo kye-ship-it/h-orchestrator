@@ -50,24 +50,24 @@ export default async function Home() {
       <div className="mb-6 flex items-center gap-1.5 text-sm text-neutral-400">
         <span>Daily Logs</span>
         <span>/</span>
-        <span className="text-neutral-600">{frontmatter.date || "Latest"}</span>
+        <span className="text-neutral-600">{String(frontmatter.date || "Latest")}</span>
       </div>
 
       {/* Meta */}
       <div className="mb-8 flex flex-wrap items-center gap-2">
         {frontmatter.date && (
           <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-            {frontmatter.date}
+            {String(frontmatter.date)}
           </span>
         )}
         {frontmatter.agent && (
           <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
-            {frontmatter.agent}
+            {String(frontmatter.agent)}
           </span>
         )}
         {frontmatter.type && (
           <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
-            {frontmatter.type}
+            {String(frontmatter.type)}
           </span>
         )}
       </div>
