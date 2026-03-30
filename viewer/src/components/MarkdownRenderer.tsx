@@ -114,10 +114,13 @@ const components: Partial<Components> = {
 };
 
 export default function MarkdownRenderer({ content }: { content: string }) {
+  // Strip YAML frontmatter (--- ... ---) before rendering
+  const stripped = content.replace(/^---[\s\S]*?---\s*/, '');
+
   return (
     <article className="max-w-none">
       <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={components}>
-        {content}
+        {stripped}
       </ReactMarkdown>
     </article>
   );

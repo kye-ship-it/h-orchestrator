@@ -1,26 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT="dl-cx-sync"
+PROJECT="hyundai-bi-agent-dev"
 REGION="asia-northeast3"
-SERVICE_NAME="hmca-viewer"
-SA_EMAIL="${SERVICE_NAME}@${PROJECT}.iam.gserviceaccount.com"
+SERVICE_NAME="h-agent-orchestrator"
+SA_EMAIL="h-agent-orchestrator@${PROJECT}.iam.gserviceaccount.com"
 
 echo "=== Deploying Cloud Run: ${SERVICE_NAME} ==="
-
-# Create service account if not exists
-gcloud iam service-accounts describe "${SA_EMAIL}" --project="${PROJECT}" 2>/dev/null || \
-  gcloud iam service-accounts create "${SERVICE_NAME}" \
-    --project="${PROJECT}" \
-    --display-name="HMCA Viewer"
-
-# Grant permissions
-for ROLE in roles/storage.objectViewer roles/storage.objectCreator roles/bigquery.dataViewer roles/aiplatform.user; do
-  gcloud projects add-iam-policy-binding "${PROJECT}" \
-    --member="serviceAccount:${SA_EMAIL}" \
-    --role="${ROLE}" \
-    --quiet
-done
 
 # Deploy from source (Cloud Build will use Dockerfile)
 gcloud run deploy "${SERVICE_NAME}" \
@@ -30,13 +16,13 @@ gcloud run deploy "${SERVICE_NAME}" \
   --allow-unauthenticated \
   --service-account "${SA_EMAIL}" \
   --set-env-vars "\
-GCS_BUCKET=h-gdcx-orchestrator,\
+GCS_BUCKET=h-agent-log,\
 GCP_PROJECT=${PROJECT},\
-GEMINI_MODEL=gemini-2.5-flash-lite,\
-GEMINI_LOCATION=us-central1,\
-BQ_META_TABLE=${PROJECT}.HQ_DW_PRD.ods_hmb_hvoice_meta,\
-BQ_LEAD_TABLE=${PROJECT}.HQ_DW_PRD.ods_hmb_hvoice_lead,\
-BQ_ANALYSIS_TABLE=${PROJECT}.HQ_DW_PRD.ods_hmb_hvoice_analysis" \
+GEMINI_MODEL=gemini-2.5-flash,\
+GEMINI_LOCATION=asia-northeast3,\
+BQ_META_TABLE=dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_meta,\
+BQ_LEAD_TABLE=dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_lead,\
+BQ_ANALYSIS_TABLE=dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_analysis" \
   --memory 512Mi \
   --min-instances 0
 

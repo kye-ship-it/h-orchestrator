@@ -21,14 +21,14 @@ generated_at: {{ generated_at }}
 | Hung Up (조기 종료) | {{ hungup_count }} | {{ hungup_rate }}% | {{ hungup_rate_delta }}pp | {{ hungup_status }} |
 | Connected (연결) | {{ connected_count }} | {{ connected_rate }}% | {{ connected_rate_delta }}pp | {{ connected_status }} |
 | Accepted (수락) | {{ accepted_count }} | {{ accepted_rate }}% of connected | {{ accepted_rate_delta }}pp | {{ accepted_status }} |
-| Qualified (퀄리파이) | {{ qualified_count }} | {{ qualified_rate }}% of accepted | {{ qualified_rate_delta }}pp | {{ qualified_status }} |
-| Dealer Consent (딜러 동의) | {{ consent_count }} | {{ consent_rate }}% of accepted | {{ consent_rate_delta }}pp | {{ consent_status }} |
+| Dealer Assigned (딜러 배정) | {{ dealer_assigned_count }} | {{ dealer_assigned_rate }}% of accepted | {{ dealer_assigned_rate_delta }}pp | {{ dealer_assigned_status }} |
 | Test Drive Scheduled (시승 예약) | {{ testdrive_count }} | {{ testdrive_rate }}% of accepted | {{ testdrive_rate_delta }}pp | {{ testdrive_status }} |
+| Ready Lead (고품질 리드) | {{ ready_lead_count }} | {{ ready_lead_rate }}% of dealer assigned | {{ ready_lead_rate_delta }}pp | {{ ready_lead_status }} |
 
 > **Connected**: voicemail=false AND hung_up=false
 > **Accepted**: type="accepted"
-> **Qualified**: 핵심 필드(timeframe, payment_method, trade_in) 중 2개 이상 수집
-> **Dealer Consent**: dealer_consent="yes"
+> **Dealer Assigned**: dealer_consent="yes" (딜러 연결 동의)
+> **Ready Lead**: Dealer Assigned AND BANT 핵심 필드 2개 이상 수집
 
 ## 2. Qualification Depth (퀄리피케이션 수집 현황)
 
@@ -58,13 +58,13 @@ generated_at: {{ generated_at }}
 ## 4. Model & Dealer Insights (차종 및 딜러 분석)
 
 ### 차종별 현황
-| 차종 | 콜 수 | Acceptance Rate | Qualification Rate |
-|------|-------|----------------|-------------------|
+| 차종 | 콜 수 | Acceptance Rate | Dealer Assigned Rate |
+|------|-------|----------------|---------------------|
 {{ model_table }}
 
-### 딜러별 현황 (Consent Rate 상위)
-| 딜러명 | 콜 수 | Consent Rate | 시승 예약 |
-|--------|-------|-------------|----------|
+### 딜러별 현황 (Dealer Assigned Rate 상위)
+| 딜러명 | 콜 수 | Dealer Assigned Rate | 시승 예약 |
+|--------|-------|---------------------|----------|
 {{ dealer_table }}
 
 ### 채널별 현황

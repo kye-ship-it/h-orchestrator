@@ -181,7 +181,7 @@ export default function GenerateReportPage() {
             <span className="text-sm text-neutral-500">{title}</span>
             {savedPath && (
               <Link
-                href={`/logs/${savedPath}`}
+                href={`/logs/${savedPath.split('/').map(encodeURIComponent).join('/')}`}
                 className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
               >
                 저장된 리포트 보기

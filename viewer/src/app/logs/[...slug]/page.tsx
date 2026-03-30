@@ -11,7 +11,7 @@ export default async function LogPage({
   params: Promise<{ slug: string[] }>;
 }) {
   const { slug } = await params;
-  const filePath = slug.join("/");
+  const filePath = slug.map(decodeURIComponent).join("/");
 
   const rawContent = await readFile(filePath);
   if (!rawContent) notFound();

@@ -38,7 +38,7 @@ def _build_system_prompt() -> str:
 제공된 메트릭 데이터와 콜 요약을 기반으로 Daily Log 마크다운을 생���합니다.
 
 작성 규칙:
-- 기본 언어는 한글이며, 주요 지표명(Acceptance Rate, Qualification Rate 등)은 영문으로 유지합니다.
+- 기본 언어는 한글이며, 주요 지표명(Acceptance Rate, Dealer Assigned Rate 등)은 영문으로 유지합니다.
 - Executive Summary는 3~5줄로 당일 핵심 수치, 전일 대비 변화, 주목할 패턴을 간결하게 서술합니다.
 - Status 컬럼: 개선/양호 "🟢", 보합 "🟡", 악화/주의 "🔴" 사용
 - 전일 비교 데이터가 없으면 delta 컬럼에 "—"을 표시합니다.
@@ -59,7 +59,7 @@ def _format_segment_table(
     lines = []
     for name, s in sorted_segs:
         lines.append(
-            f"| {name} | {s.calls} | {s.acceptance_rate}% | {s.qualification_rate}% |"
+            f"| {name} | {s.calls} | {s.acceptance_rate}% | {s.dealer_assigned_rate}% |"
         )
     return "\n".join(lines) if lines else "| (데이터 없음) | — | — | — |"
 
@@ -67,14 +67,14 @@ def _format_segment_table(
 def _format_dealer_table(
     segments: dict[str, SegmentStats], top_n: int = 10
 ) -> str:
-    """Format dealer stats sorted by consent rate."""
+    """Format dealer stats sorted by dealer assigned rate."""
     sorted_segs = sorted(
-        segments.items(), key=lambda x: x[1].consent_rate, reverse=True
+        segments.items(), key=lambda x: x[1].dealer_assigned_rate, reverse=True
     )[:top_n]
     lines = []
     for name, s in sorted_segs:
         lines.append(
-            f"| {name} | {s.calls} | {s.consent_rate}% | {s.testdrive} |"
+            f"| {name} | {s.calls} | {s.dealer_assigned_rate}% | {s.testdrive} |"
         )
     return "\n".join(lines) if lines else "| (데이터 없음) | — | — | — |"
 
@@ -159,9 +159,9 @@ generated_at: {datetime.now(timezone.utc).isoformat()}
     parts.append(f"- Hung Up (조기 종료): {metrics.hungup_count} ({metrics.hungup_rate}%)")
     parts.append(f"- Connected: {metrics.connected_count} ({metrics.connected_rate}%)")
     parts.append(f"- Accepted: {metrics.accepted_count} ({metrics.accepted_rate}% of connected)")
-    parts.append(f"- Qualified: {metrics.qualified_count} ({metrics.qualified_rate}% of accepted)")
-    parts.append(f"- Dealer Consent: {metrics.consent_count} ({metrics.consent_rate}% of accepted)")
+    parts.append(f"- Dealer Assigned: {metrics.dealer_assigned_count} ({metrics.dealer_assigned_rate}% of accepted)")
     parts.append(f"- Test Drive Scheduled: {metrics.testdrive_count} ({metrics.testdrive_rate}% of accepted)")
+    parts.append(f"- Ready Lead: {metrics.ready_lead_count} ({metrics.ready_lead_rate}% of dealer assigned)")
     parts.append("")
 
     # Qualification depth
@@ -189,7 +189,7 @@ generated_at: {datetime.now(timezone.utc).isoformat()}
     parts.append("## 차종별 데이터")
     parts.append(_format_segment_table(metrics.model_segments))
     parts.append("")
-    parts.append("## 딜러별 데이터 (Consent Rate 상위)")
+    parts.append("## 딜러별 데이터 (Dealer Assigned Rate 상위)")
     parts.append(_format_dealer_table(metrics.dealer_segments))
     parts.append("")
     parts.append("## 채널별 데이터")

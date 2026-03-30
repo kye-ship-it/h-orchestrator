@@ -3,7 +3,7 @@ import { generateReport } from '@/lib/gemini';
 import { writeFile, readFile } from '@/lib/gcs';
 import type { ReportParams } from '@/lib/types';
 
-const GCP_PROJECT = process.env.GCP_PROJECT ?? 'dl-cx-sync';
+const GCP_PROJECT = process.env.GCP_PROJECT ?? 'hyundai-bi-agent-dev';
 const BQ_META = process.env.BQ_META_TABLE ?? 'dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_meta';
 const BQ_ANALYSIS = process.env.BQ_ANALYSIS_TABLE ?? 'dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_analysis';
 const BQ_LEAD = process.env.BQ_LEAD_TABLE ?? 'dl-cx-sync.HQ_DW_PRD.ods_hmb_hvoice_lead';
@@ -31,13 +31,16 @@ export async function POST(request: Request) {
 
   try {
     // Strategy: use existing daily logs if available, fall back to BQ
+    // For long periods (>14 days), extract only metrics sections to stay efficient
     const dailyLogs = await collectDailyLogs(startDate, endDate);
     let data: string;
 
     if (dailyLogs.length > 0) {
-      data = dailyLogs.join('\n\n---\n\n');
-      if (data.length > 30000) {
-        data = data.slice(0, 30000) + '\n... [truncated]';
+      const dayCount = dailyLogs.length;
+      if (dayCount > 14) {
+        data = dailyLogs.map((log) => extractMetrics(log)).join('\n\n---\n\n');
+      } else {
+        data = dailyLogs.join('\n\n---\n\n');
       }
     } else {
       data = await queryBigQuery(startDate, endDate);
@@ -59,6 +62,22 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : 'Report generation failed';
     return Response.json({ error: message }, { status: 500 });
   }
+}
+
+function extractMetrics(log: string): string {
+  // Extract frontmatter + sections 1-4 (funnel, qualification, performance, insights)
+  // Drop sections 5-6 (anomalies detail, orchestrator notes) and individual call summaries
+  const sections = log.split(/^## /m);
+  const kept: string[] = [];
+
+  for (const section of sections) {
+    // Keep frontmatter + title + executive summary
+    if (!section.startsWith('5.') && !section.startsWith('6.')) {
+      kept.push(section);
+    }
+  }
+
+  return kept.join('## ').trim();
 }
 
 async function collectDailyLogs(startDate: string, endDate: string): Promise<string[]> {
@@ -97,7 +116,7 @@ async function queryBigQuery(startDate: string, endDate: string): Promise<string
       COUNTIF(a.type = 'accepted') AS accepted_count,
       COUNTIF(a.dealer_consent = 'yes') AS consent_count,
       COUNTIF(a.test_drive_slot IS NOT NULL AND a.test_drive_slot != '' AND LOWER(a.test_drive_slot) NOT IN ('not informed', 'não informado')) AS testdrive_count,
-      ROUND(AVG(SAFE_CAST(m.call_duration AS INT64)), 1) AS avg_duration,
+      ROUND(AVG(m.call_duration), 1) AS avg_duration,
       m.model_of_interest,
       m.channel
     FROM \`${BQ_META}\` m

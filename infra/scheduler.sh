@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT="dl-cx-sync"
+PROJECT="hyundai-bi-agent-dev"
 REGION="asia-northeast3"
 JOB_NAME="daily-hvoice-report"
 
@@ -16,15 +16,15 @@ if [ -z "${FUNCTION_URL}" ]; then
 fi
 
 # Get the SA email for authentication
-SA_EMAIL="generate-daily-report@${PROJECT}.iam.gserviceaccount.com"
+SA_EMAIL="h-agent-orchestrator@${PROJECT}.iam.gserviceaccount.com"
 
 echo "=== Creating Cloud Scheduler Job: ${JOB_NAME} ==="
 echo "Target: ${FUNCTION_URL}"
-echo "Schedule: 07:00 daily (America/Santiago)"
+echo "Schedule: 13:00 daily (Asia/Seoul) — runs after BRT midnight (BRT+12h=KST)"
 
 gcloud scheduler jobs create http "${JOB_NAME}" \
-  --schedule "0 7 * * *" \
-  --time-zone "America/Santiago" \
+  --schedule "0 13 * * *" \
+  --time-zone "Asia/Seoul" \
   --uri "${FUNCTION_URL}" \
   --http-method GET \
   --project "${PROJECT}" \
@@ -32,8 +32,8 @@ gcloud scheduler jobs create http "${JOB_NAME}" \
   --oidc-service-account-email "${SA_EMAIL}" \
   2>/dev/null || \
 gcloud scheduler jobs update http "${JOB_NAME}" \
-  --schedule "0 7 * * *" \
-  --time-zone "America/Santiago" \
+  --schedule "0 13 * * *" \
+  --time-zone "Asia/Seoul" \
   --uri "${FUNCTION_URL}" \
   --http-method GET \
   --project "${PROJECT}" \

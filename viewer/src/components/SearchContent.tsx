@@ -174,7 +174,7 @@ export default function SearchContent() {
             {results.map((result) => (
               <Link
                 key={result.path}
-                href={`/logs/${result.path}`}
+                href={`/logs/${result.path.split('/').map(encodeURIComponent).join('/')}`}
                 className="block rounded-lg px-4 py-3 transition-colors hover:bg-neutral-50 border border-transparent hover:border-neutral-200"
               >
                 <div className="flex items-center gap-2 mb-1">

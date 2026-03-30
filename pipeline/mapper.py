@@ -41,6 +41,15 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
 def _safe_bool(value: Any, default: bool = False) -> bool:
     if value is None:
         return default
@@ -61,7 +70,7 @@ class CallRecord:
     # Call meta
     call_created_at: datetime | None
     call_status: str
-    call_duration: int  # seconds
+    call_duration: float  # seconds
     call_ended_by: str
     scenario_version: str
     channel: str
@@ -106,14 +115,20 @@ class CallRecord:
         return self.call_type.lower() == "accepted"
 
     @property
-    def is_qualified(self) -> bool:
-        """Qualified = 2+ key fields (timeframe, payment, trade_in) collected."""
-        key_fields = [self.timeframe, self.payment_method, self.trade_in]
-        return sum(_is_collected(f) for f in key_fields) >= 2
+    def is_dealer_assigned(self) -> bool:
+        """Dealer Assigned = dealer_consent is 'yes'."""
+        return _safe_str(self.dealer_consent).lower() == "yes"
 
     @property
-    def has_dealer_consent(self) -> bool:
-        return _safe_str(self.dealer_consent).lower() == "yes"
+    def bant_collected(self) -> int:
+        """Count of BANT key fields collected (timeframe, payment, trade_in)."""
+        key_fields = [self.timeframe, self.payment_method, self.trade_in]
+        return sum(_is_collected(f) for f in key_fields)
+
+    @property
+    def is_ready_lead(self) -> bool:
+        """Ready Lead = Dealer Assigned AND 2+ BANT fields collected."""
+        return self.is_dealer_assigned and self.bant_collected >= 2
 
     @property
     def has_test_drive(self) -> bool:
@@ -182,8 +197,8 @@ class SegmentStats:
 
     calls: int = 0
     accepted: int = 0
-    qualified: int = 0
-    consent: int = 0
+    dealer_assigned: int = 0
+    ready_lead: int = 0
     testdrive: int = 0
 
     @property
@@ -191,12 +206,12 @@ class SegmentStats:
         return round(self.accepted / self.calls * 100, 1) if self.calls else 0.0
 
     @property
-    def qualification_rate(self) -> float:
-        return round(self.qualified / self.accepted * 100, 1) if self.accepted else 0.0
+    def dealer_assigned_rate(self) -> float:
+        return round(self.dealer_assigned / self.accepted * 100, 1) if self.accepted else 0.0
 
     @property
-    def consent_rate(self) -> float:
-        return round(self.consent / self.accepted * 100, 1) if self.accepted else 0.0
+    def ready_rate(self) -> float:
+        return round(self.ready_lead / self.accepted * 100, 1) if self.accepted else 0.0
 
 
 @dataclass
@@ -211,18 +226,18 @@ class DailyMetrics:
     hungup_count: int = 0
     connected_count: int = 0
     accepted_count: int = 0
-    qualified_count: int = 0
-    consent_count: int = 0
+    dealer_assigned_count: int = 0
     testdrive_count: int = 0
+    ready_lead_count: int = 0
 
     # Funnel rates (%)
     voicemail_rate: float = 0.0
     hungup_rate: float = 0.0
     connected_rate: float = 0.0
     accepted_rate: float = 0.0  # of connected
-    qualified_rate: float = 0.0  # of accepted
-    consent_rate: float = 0.0  # of accepted
+    dealer_assigned_rate: float = 0.0  # of accepted
     testdrive_rate: float = 0.0  # of accepted
+    ready_lead_rate: float = 0.0  # of dealer_assigned
 
     # Call performance
     avg_duration_all: float = 0.0
@@ -266,7 +281,7 @@ def map_to_call_records(raw_rows: list[dict[str, Any]]) -> list[CallRecord]:
             call_id=_safe_str(row.get("call_id")),
             call_created_at=ts,
             call_status=_safe_str(row.get("call_status")),
-            call_duration=_safe_int(row.get("call_duration")),
+            call_duration=_safe_float(row.get("call_duration")),
             call_ended_by=_safe_str(row.get("call_ended_by")),
             scenario_version=_safe_str(row.get("scenario_version")),
             channel=_safe_str(row.get("channel")),
@@ -337,10 +352,10 @@ def _compute_segments(
             seg[key].calls += 1
             if c.is_accepted:
                 seg[key].accepted += 1
-            if c.is_qualified:
-                seg[key].qualified += 1
-            if c.has_dealer_consent:
-                seg[key].consent += 1
+            if c.is_dealer_assigned:
+                seg[key].dealer_assigned += 1
+            if c.is_ready_lead:
+                seg[key].ready_lead += 1
             if c.has_test_drive:
                 seg[key].testdrive += 1
 
@@ -359,20 +374,20 @@ def _detect_anomalies(m: DailyMetrics) -> list[str]:
         anomalies.append(
             f"낮은 Acceptance Rate: {m.accepted_rate}% (기준 30% 미만)"
         )
-    if m.accepted_count > 5 and m.qualified_rate < 20.0:
+    if m.accepted_count > 5 and m.dealer_assigned_rate < 30.0:
         anomalies.append(
-            f"낮은 Qualification Rate: {m.qualified_rate}% (기준 20% 미만)"
+            f"낮은 Dealer Assigned Rate: {m.dealer_assigned_rate}% (기준 30% 미만)"
         )
     if m.avg_duration_all > 0 and m.avg_duration_all < 10.0:
         anomalies.append(
             f"비정상적으로 짧은 평균 통화 시간: {m.avg_duration_all}초"
         )
 
-    # Check for dealers with 0% consent rate but 3+ calls.
+    # Check for dealers with 0% dealer assigned rate but 3+ accepted calls.
     for dealer, stats in m.dealer_segments.items():
-        if stats.accepted >= 3 and stats.consent_rate == 0.0:
+        if stats.accepted >= 3 and stats.dealer_assigned_rate == 0.0:
             anomalies.append(
-                f"딜러 '{dealer}' Consent Rate 0% ({stats.accepted}건 중 0건)"
+                f"딜러 '{dealer}' Dealer Assigned Rate 0% ({stats.accepted}건 중 0건)"
             )
 
     return anomalies
@@ -392,9 +407,9 @@ def compute_daily_metrics(records: list[CallRecord]) -> DailyMetrics:
     hungup = [c for c in records if c.hung_up and not c.voicemail]
     connected = [c for c in records if c.is_connected]
     accepted = [c for c in records if c.is_accepted]
-    qualified = [c for c in records if c.is_qualified]
-    consent = [c for c in records if c.has_dealer_consent]
+    dealer_assigned = [c for c in records if c.is_dealer_assigned]
     testdrive = [c for c in records if c.has_test_drive]
+    ready_leads = [c for c in records if c.is_ready_lead]
 
     # Rates
     def _pct(num: int, denom: int) -> float:
@@ -426,16 +441,16 @@ def compute_daily_metrics(records: list[CallRecord]) -> DailyMetrics:
         hungup_count=len(hungup),
         connected_count=len(connected),
         accepted_count=len(accepted),
-        qualified_count=len(qualified),
-        consent_count=len(consent),
+        dealer_assigned_count=len(dealer_assigned),
         testdrive_count=len(testdrive),
+        ready_lead_count=len(ready_leads),
         voicemail_rate=_pct(len(voicemail), total),
         hungup_rate=_pct(len(hungup), total),
         connected_rate=_pct(len(connected), total),
         accepted_rate=_pct(len(accepted), len(connected)),
-        qualified_rate=_pct(len(qualified), len(accepted)),
-        consent_rate=_pct(len(consent), len(accepted)),
+        dealer_assigned_rate=_pct(len(dealer_assigned), len(accepted)),
         testdrive_rate=_pct(len(testdrive), len(accepted)),
+        ready_lead_rate=_pct(len(ready_leads), len(dealer_assigned)),
         avg_duration_all=avg_all,
         avg_duration_accepted=avg_accepted,
         avg_duration_voicemail=avg_vm,
@@ -453,11 +468,11 @@ def compute_daily_metrics(records: list[CallRecord]) -> DailyMetrics:
     m.anomalies = _detect_anomalies(m)
     logger.info(
         "Metrics: total=%d, connected=%d(%.1f%%), accepted=%d(%.1f%%), "
-        "qualified=%d(%.1f%%), consent=%d(%.1f%%), testdrive=%d",
+        "dealer_assigned=%d(%.1f%%), ready_lead=%d(%.1f%%), testdrive=%d",
         m.total_calls, m.connected_count, m.connected_rate,
         m.accepted_count, m.accepted_rate,
-        m.qualified_count, m.qualified_rate,
-        m.consent_count, m.consent_rate,
+        m.dealer_assigned_count, m.dealer_assigned_rate,
+        m.ready_lead_count, m.ready_lead_rate,
         m.testdrive_count,
     )
     return m

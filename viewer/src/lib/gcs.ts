@@ -3,7 +3,7 @@ import matter from 'gray-matter';
 import type { FileNode, SearchResult } from './types';
 import { semanticSearch } from './embeddings';
 
-const BUCKET_NAME = process.env.GCS_BUCKET ?? 'h-gdcx-orchestrator';
+const BUCKET_NAME = process.env.GCS_BUCKET ?? 'h-agent-log';
 const USE_MOCK = process.env.USE_MOCK_DATA === 'true' || !process.env.GCS_BUCKET;
 
 let storageInstance: Storage | null = null;
@@ -453,7 +453,8 @@ export async function writeFile(
 ): Promise<string> {
   const bucket = getBucket();
   if (!bucket) {
-    console.warn('GCS not configured. Skipping write for:', path);
+    console.warn('GCS not configured. Storing in mock data for:', path);
+    MOCK_FILES[path] = content;
     return path;
   }
 

@@ -15,7 +15,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const activePath = pathname.startsWith("/logs/")
-    ? pathname.replace("/logs/", "")
+    ? pathname.replace("/logs/", "").split('/').map(decodeURIComponent).join('/')
     : undefined;
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export function Sidebar() {
             <rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.5" />
             <path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
-          HMCA Monitor
+          H-Agent Orchestrator
         </Link>
         <button
           onClick={() => setCollapsed(true)}

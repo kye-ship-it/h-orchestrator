@@ -21,8 +21,8 @@ export interface IndexEntry {
 // Configuration
 // ---------------------------------------------------------------------------
 
-const GCP_PROJECT = process.env.GCP_PROJECT ?? 'dl-cx-sync';
-const GCP_LOCATION = process.env.GCP_LOCATION ?? 'us-central1';
+const GCP_PROJECT = process.env.GCP_PROJECT ?? 'hyundai-bi-agent-dev';
+const GCP_LOCATION = process.env.GCP_LOCATION ?? 'asia-northeast3';
 const EMBEDDING_MODEL = 'text-embedding-005';
 const INDEX_PATH = 'index/embeddings.json';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -149,7 +149,7 @@ export async function loadIndex(): Promise<IndexEntry[] | null> {
 
   try {
     const { Storage } = await import('@google-cloud/storage');
-    const bucketName = process.env.GCS_BUCKET ?? 'h-gdcx-orchestrator';
+    const bucketName = process.env.GCS_BUCKET ?? 'h-agent-log';
     const storage = new Storage();
     const bucket = storage.bucket(bucketName);
     const file = bucket.file(INDEX_PATH);

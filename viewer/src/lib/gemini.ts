@@ -1,9 +1,9 @@
 import { VertexAI } from '@google-cloud/vertexai';
 import type { ReportParams } from './types';
 
-const PROJECT = process.env.GCP_PROJECT ?? 'dl-cx-sync';
-const LOCATION = process.env.GEMINI_LOCATION ?? 'us-central1';
-const MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite';
+const PROJECT = process.env.GCP_PROJECT ?? 'hyundai-bi-agent-dev';
+const LOCATION = process.env.GEMINI_LOCATION ?? 'asia-northeast3';
+const MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `당신은 H-Voice 콜 에이전트 시스템의 AI 운영 분석가입니다.
 제공된 Daily Log 데이터 또는 BigQuery 집계 데이터를 기반으로 분석 리포트를 생성합니다.

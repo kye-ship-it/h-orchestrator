@@ -9,7 +9,7 @@ set -euo pipefail
 #   bash infra/backfill.sh 2026-03-25              # single day
 # =============================================================
 
-PROJECT="dl-cx-sync"
+PROJECT="hyundai-bi-agent-dev"
 REGION="asia-northeast3"
 FUNCTION_NAME="generate-daily-report"
 

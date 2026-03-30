@@ -17,7 +17,7 @@ export default async function Home() {
             <path d="M9 12h6M9 16h4" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </div>
-        <h1 className="text-xl font-semibold text-neutral-800">Welcome to HMCA Monitor</h1>
+        <h1 className="text-xl font-semibold text-neutral-800">Welcome to H-Agent Orchestrator</h1>
         <p className="mt-2 text-[15px] text-neutral-500 max-w-md mx-auto">
           No reports generated yet. Configure your GCS bucket and run the pipeline to start seeing daily logs here.
         </p>

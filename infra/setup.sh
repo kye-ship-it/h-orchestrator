@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT="dl-cx-sync"
-BUCKET="h-gdcx-orchestrator"
+PROJECT="hyundai-bi-agent-dev"
+BUCKET="h-agent-log"
 REGION="asia-northeast3"
 
 echo "Creating GCS bucket: gs://${BUCKET}"

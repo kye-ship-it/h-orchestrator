@@ -58,7 +58,7 @@ function TreeItem({
 
   return (
     <Link
-      href={`/logs/${node.path}`}
+      href={`/logs/${node.path.split('/').map(encodeURIComponent).join('/')}`}
       className={`flex items-center gap-1.5 rounded-md py-[5px] text-[13px] transition-colors ${
         isActive
           ? "bg-blue-50 text-blue-700 font-medium"

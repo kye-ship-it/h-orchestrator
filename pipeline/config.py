@@ -2,9 +2,9 @@
 
 import os
 
-GCP_PROJECT = os.getenv("GCP_PROJECT", "dl-cx-sync")
-GCS_BUCKET = os.getenv("GCS_BUCKET", "h-gdcx-orchestrator")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite-preview-06-17")
+GCP_PROJECT = os.getenv("GCP_PROJECT", "hyundai-bi-agent-dev")
+GCS_BUCKET = os.getenv("GCS_BUCKET", "h-agent-log")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_LOCATION = os.getenv("GEMINI_LOCATION", "asia-northeast3")
 GEMINI_TEMPERATURE = 0.3
 
